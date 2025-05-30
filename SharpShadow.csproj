@@ -1,0 +1,62 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+	
+	<PropertyGroup>
+		<TargetFramework>net48</TargetFramework>
+		<RootNamespace>SharpShadow</RootNamespace>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<LangVersion>10.0</LangVersion>
+		<OutputType>Library</OutputType>
+		<TargetExt>.gha</TargetExt>
+		<AssemblyName>SharpShadow</AssemblyName>
+		<Title>SharpShadow</Title>
+		<Version>0.5.1</Version>
+		<Authors>ArchVittorio</Authors>
+		<Product>SharpShadow</Product>
+		<Company>ArchVittorio</Company>
+
+
+
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Grasshopper" Version="8.0.23304.9001" />
+		<PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net481" Version="1.0.3">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+		<PackageReference Include="RhinoCommon" Version="8.0.23304.9001" />
+
+
+
+
+
+		
+		
+			
+		
+
+	</ItemGroup>
+
+</Project>
+
+
+
+<!--
+
+<EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+
+
+			<Compile Include="Core\SsSetting.cs" />
+			<Compile Include="Core\SsSilhouette.cs" />
+			<Compile Include="Core\SsRegione.cs" />
+			<Compile Include="Components\CreateSsSetting.cs" />
+			<Compile Include="Components\CreateSsSilhouette.cs" />
+			<Compile Include="Components\CutGeometry.cs" />
+			<Compile Include="Components\CreateSsRegione.cs" />
+			<Compile Include="Components\MapSsRegione.cs" />
+			<Compile Include="Utilities\SsUtils.cs" />
+			<Compile Include="Properties\AssemblyInfo.cs" />
+			
+			
+			-->
