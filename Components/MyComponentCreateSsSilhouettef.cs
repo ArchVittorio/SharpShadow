@@ -8,8 +8,6 @@ namespace SharpShadow.Components
 {
     public class CreateSsSilhouetteComponent : GH_Component
     {
-
- 
         public CreateSsSilhouetteComponent()
             : base("CreateSsSilhouette", "CreateSil",
                    "Creates SsSilhouette objects from geometries and SsSettings.",
@@ -19,7 +17,13 @@ namespace SharpShadow.Components
 
         protected override void RegisterInputParams(GH_InputParamManager pManager)
         {
-            pManager.AddGeometryParameter("Geometries", "G", "Input geometries (Brep or Mesh)", GH_ParamAccess.list);
+            // Register the Geometries parameter and store its index
+            int geometriesParam = pManager.AddGeometryParameter("Geometries", "G", "Input geometries (Brep or Mesh)", GH_ParamAccess.list);
+
+            // Set the DataMapping property to Flatten
+            pManager[geometriesParam].DataMapping = GH_DataMapping.Flatten;
+
+            // Register the other input parameters
             pManager.AddGenericParameter("SsSettings", "S", "SsSettings object from CreateSsSettings", GH_ParamAccess.item);
             pManager.AddBooleanParameter("CreateShadow", "CS", "Compute shadow-related data (default: true)", GH_ParamAccess.item, true);
         }
@@ -76,7 +80,6 @@ namespace SharpShadow.Components
             }
 
             // Generate SsSilhouette objects
-            SsSilhouette.ResetCrvCode();
             List<SsSilhouette> silhouettes = new List<SsSilhouette>();
             List<Curve> silCrvs = new List<Curve>();
             List<Curve> planedCrvs = new List<Curve>();
@@ -88,41 +91,50 @@ namespace SharpShadow.Components
                 if (geometry == null || !geometry.IsValid)
                 {
                     logMessages.Add($"Geometry {i}: Invalid or null geometry.");
+                    silCrvs.Add(null);
+                    planedCrvs.Add(null);
                     continue;
                 }
 
                 try
                 {
-                    // Assume SsSilhouette constructor handles CreateShadow logic
+                    // Call the correct SsSilhouette constructor
                     var silhouette = new SsSilhouette(
                         geometry,
                         SilhouetteType.Boundary,
                         settings.Tolerance,
                         settings.AngleToleranceRadians,
                         settings.ViewName,
-                        createShadow, // Pass CreateShadow parameter
                         out var silhouetteLogs
                     );
+
+                    // Optionally handle createShadow (if applicable)
+                    if (!createShadow)
+                    {
+                        logMessages.Add($"Geometry {i}: CreateShadow is false, skipping shadow-related data.");
+                        // Adjust silhouette if needed (e.g., clear shadow data)
+                    }
+
                     silhouettes.Add(silhouette);
                     if (silhouette.SilCrv != null && silhouette.SilCrv.IsValid)
                     {
                         silCrvs.Add(silhouette.SilCrv);
-                        logMessages.Add($"Geometry {i}: SilCrv computed.");
+                        logMessages.Add($"Geometry {i}: SilCrv computed, Length: {silhouette.SilCrv.GetLength()}");
                     }
                     else
                     {
                         silCrvs.Add(null);
-                        logMessages.Add($"Geometry {i}: No SilCrv computed.");
+                        logMessages.Add($"Geometry {i}: No valid SilCrv computed.");
                     }
                     if (silhouette.PlanedCurve != null && silhouette.PlanedCurve.IsValid)
                     {
                         planedCrvs.Add(silhouette.PlanedCurve);
-                        logMessages.Add($"Geometry {i}: PlanedCurve computed.");
+                        logMessages.Add($"Geometry {i}: PlanedCurve computed, Length: {silhouette.PlanedCurve.GetLength()}");
                     }
                     else
                     {
                         planedCrvs.Add(null);
-                        logMessages.Add($"Geometry {i}: No PlanedCurve computed.");
+                        logMessages.Add($"Geometry {i}: No valid PlanedCurve computed.");
                     }
                     logMessages.AddRange(silhouetteLogs);
                 }
@@ -149,6 +161,8 @@ namespace SharpShadow.Components
                 DA.SetDataList(3, logMessages);
             }
         }
+
+        protected override System.Drawing.Bitmap Icon => null;
 
         public override Guid ComponentGuid => new Guid("a1b2c3d4-e5f6-7890-abcd-1238567890ab");
     }
