@@ -29,6 +29,7 @@ namespace SharpShadow
         public Guid ParentID;
         public ObjectType ParentType;
         public bool CreateShadow;
+        public bool IsProjectee;
         public GeometryBase GeometryReference { get; private set; }
 
         // Spliting the geometry
@@ -48,14 +49,37 @@ namespace SharpShadow
         // Base constructor (without log)
         public SsSilhouette(GeometryBase geometry, SilhouetteType silhouetteType, double tolerance, double angleToleranceRadians, string viewName)
         {
-            //basic settings
+            // Basic settings
             SilType = silhouetteType;
             IsProfile = true;
 
             if (geometry != null)
             {
                 GeometryReference = geometry;
-                ParentID = Guid.NewGuid();
+                // 设置 ParentID
+                if (geometry is IGH_GeometricGoo geometricGoo && geometricGoo.ReferenceID != Guid.Empty)
+                {
+                    ParentID = geometricGoo.ReferenceID; // Grasshopper 的 ReferenceID
+                }
+                else
+                {
+                    // 后备：尝试在 Rhino 文档中查找
+                    // Replace the line causing the error
+                    // RhinoObject rhinoObj = RhinoDoc.ActiveDoc.Objects.FindByGeometry(geometry);
+
+                    // Use a workaround to find the RhinoObject by its geometry
+                    RhinoObject rhinoObj = RhinoDoc.ActiveDoc.Objects
+                        .FirstOrDefault(obj => obj.Geometry?.Equals(geometry) == true);
+
+                    if (rhinoObj != null)
+                    {
+                        ParentID = rhinoObj.Id;
+                    }
+                    else
+                    {
+                        ParentID = Guid.NewGuid(); // 依赖 CreateSsSilhouetteComponent 写入 RhinoDoc
+                    }
+                }
                 ParentType = geometry.ObjectType;
             }
             else
@@ -64,7 +88,7 @@ namespace SharpShadow
                 ParentType = ObjectType.None;
             }
 
-            //get the view
+            // Get the view
             RhinoDoc doc = RhinoDoc.ActiveDoc;
             if (string.IsNullOrEmpty(viewName))
             {
@@ -81,7 +105,7 @@ namespace SharpShadow
                 goto InitializeRest;
             }
 
-            // from view to plane and direction
+            // From view to plane and direction
             RhinoViewport viewport = targetView.ActiveViewport;
             Vector3d parallelCameraDirection = viewport.CameraDirection;
             supportPlane = new Plane();
@@ -94,7 +118,7 @@ namespace SharpShadow
             }
             supportPlane = nPlane;
 
-            // compute silhouettes
+            // Compute silhouettes
             Silhouette[] silhouettes = Silhouette.Compute(geometry, silhouetteType, parallelCameraDirection, tolerance, angleToleranceRadians);
             if (silhouettes != null && silhouettes.Length > 0)
             {
@@ -116,7 +140,6 @@ namespace SharpShadow
                 PlanedCurve = null;
             }
 
-        // Initialize rest
         InitializeRest:
             CreateShadow = true;
             CrvCode = _nextNumber++;
@@ -128,7 +151,7 @@ namespace SharpShadow
 
         // Constructor with log support
         public SsSilhouette(GeometryBase geometry, SilhouetteType silhouetteType, double tolerance, double angleToleranceRadians, string viewName, out List<string> logMessages)
-            : this(geometry, silhouetteType, tolerance, angleToleranceRadians, viewName) // Call base constructor
+    : this(geometry, silhouetteType, tolerance, angleToleranceRadians, viewName)
         {
             logMessages = new List<string>();
             IsProfile = true;
@@ -136,11 +159,19 @@ namespace SharpShadow
             {
                 if (geometry != null)
                 {
-                    logMessages.Add($"Geometry stored internally, Temporary ParentID: {ParentID}, Type: {ParentType}");
+                    logMessages.Add($"Geometry stored, ParentID: {ParentID}, CrvCode: {CrvCode}, Type: {ParentType}");
+                    if (ParentID == Guid.Empty)
+                    {
+                        logMessages.Add("Warning: ParentID is empty, geometry may not have a valid ReferenceID.");
+                    }
+                    if (geometry is Brep brep)
+                    {
+                        logMessages.Add($"Brep Center: {brep.GetBoundingBox(true).Center}");
+                    }
                 }
                 else
                 {
-                    logMessages.Add("No geometry provided.");
+                    logMessages.Add("Error: No geometry provided.");
                 }
 
                 RhinoDoc doc = RhinoDoc.ActiveDoc;
@@ -185,7 +216,6 @@ namespace SharpShadow
                 logMessages.Add($"Exception in constructor: {ex.Message}");
             }
         }
-
 
         public SsSilhouette(GeometryBase geometry, SilhouetteType silhouetteType, double tolerance, double angleToleranceRadians, string viewName, bool createShadow, out List<string> logMessages)
             : this(geometry, silhouetteType, tolerance, angleToleranceRadians, viewName) // Call base constructor
